@@ -11,20 +11,55 @@ const Home: NextPage = () => {
   const [allSnippetsText, setAllSnippetsText] = useState([]);
   const router = useRouter();
 
-  const createSnippet = trpc.snippet.saveSnippet.useMutation();
-  const allSnippets = trpc.snippet.getAllSnippets.useQuery();
-  const deleteSnippet = trpc.snippet.deleteSnippet.useMutation({
-    onSuccess() {
-      utils.snippet.getAllSnippets.invalidate();
-    }
+
+  
+  const createSnippet = trpc.snippet.saveSnippet.useMutation({
+    async onMutate(newItem) {
+      utils.snippet.getAllSnippets.cancel();
+      const prevData = utils.snippet.getAllSnippets.getData();
+      utils.snippet.getAllSnippets.setData([ ...prevData, newItem ]);
+      return { prevData };
+    },
+    onError(err, thing, ctx) {
+      // utils.snippet.getAllSnippets.setData(ctx.prevData);
+      // some error message
+    },
+    async onSettled() {
+      // Sync with server once mutation has settled
+     await utils.snippet.getAllSnippets.invalidate();
+    },
   });
 
+  const allSnippets = trpc.snippet.getAllSnippets.useQuery();
+  
+  const deleteSnippet = trpc.snippet.deleteSnippet.
+  useMutation({
+    async onMutate(deletedItem) {
+      // Cancel outgoing fetches (so they don't overwrite our optimistic update)
+      await utils.snippet.getAllSnippets.cancel();
+      // Get the data from the queryCache
+      const prevData = utils.snippet.getAllSnippets.getData();
+      // Optimistically update the data with our new post
+      utils.snippet.getAllSnippets.setData(prevData?.filter(item => item.id !== deletedItem.id));
+      // Return the previous data so we can revert if something goes wrong
+      return { prevData }; 
+    },
+    onError(err, newPost, ctx) {
+      // If the mutation fails, use the context-value from onMutate
+      utils.snippet.getAllSnippets.setData(ctx.prevData);
+      // some error message
+    },
+    async onSettled() {
+      // Sync with server once mutation has settled
+     await utils.snippet.getAllSnippets.invalidate();
+    },
+  });
+
+
   const handleSaveSnippet = async () => {
-    const newSnippet = await createSnippet.mutateAsync({
-      text: snippetText,
-    })
+    const newSnippet = await createSnippet.mutateAsync({ text: snippetText });
     console.table(newSnippet);
-    router.push(`/snippets/${newSnippet.id}`);
+    // router.push(`/snippets/${newSnippet.id}`);
   }
 
   const handleCopy = (copiedText: string) => {

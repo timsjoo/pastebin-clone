@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
 
+
 export const snippetRouter = router({
   saveSnippet: publicProcedure
     .input(z.object({ text: z.string() }))
@@ -10,10 +11,15 @@ export const snippetRouter = router({
           text: input?.text,
         }
       })
+ 
       return snippet;
     }),
   getAllSnippets: publicProcedure.query(({ ctx }) => {
-    return ctx.prisma.snippet.findMany();
+    console.time('howLongDBTakesToFetch')
+    const thing = ctx.prisma.snippet.findMany();
+    // snippetModel.query.select().where({ status: 'active' })
+    console.timeEnd('howLongDBTakesToFetch')
+    return thing;
   }),
   getOneSnippet: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -27,11 +33,14 @@ export const snippetRouter = router({
   deleteSnippet: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ ctx, input }) => {
-      return ctx.prisma.snippet.delete({
+      console.time('howlongDBTakesToDelete')
+      const deleteThing = ctx.prisma.snippet.delete({
         where: {
           id: input.id
         }
       });
+      console.timeEnd('howlongDBTakesToDelete');
+      return deleteThing;
     }),
   updateSnippet: publicProcedure
     .input(z.object({ id: z.string(), text: z.string() }))
