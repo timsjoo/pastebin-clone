@@ -1,6 +1,5 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { Input } from "postcss";
 
 export const snippetRouter = router({
   saveSnippet: publicProcedure
@@ -21,8 +20,30 @@ export const snippetRouter = router({
     .query(({ ctx, input }) => {
       return ctx.prisma.snippet.findUnique({
         where: {
-          id: input?.id
+          id: input.id
         }
       });
     }),
+  deleteSnippet: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.snippet.delete({
+        where: {
+          id: input.id
+        }
+      });
+    }),
+  updateSnippet: publicProcedure
+    .input(z.object({ id: z.string(), text: z.string() }))
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.snippet.update({
+        where: {
+          id: input.id
+        },
+        data: {
+          text: input.text
+        }
+      });
+    }
+  )
 });

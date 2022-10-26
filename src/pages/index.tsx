@@ -4,20 +4,36 @@ import Head from "next/head";
 import { trpc } from "../utils/trpc";
 import { useRouter } from "next/router";
 
+
 const Home: NextPage = () => {
+  const utils = trpc.useContext();
   const [snippetText, setSnippetText] = useState("");
   const [allSnippetsText, setAllSnippetsText] = useState([]);
   const router = useRouter();
 
-  const snippet = trpc.snippet.saveSnippet.useMutation();
+  const createSnippet = trpc.snippet.saveSnippet.useMutation();
   const allSnippets = trpc.snippet.getAllSnippets.useQuery();
+  const deleteSnippet = trpc.snippet.deleteSnippet.useMutation({
+    onSuccess() {
+      utils.snippet.getAllSnippets.invalidate();
+    }
+  });
 
   const handleSaveSnippet = async () => {
-    const newSnippet = await snippet.mutateAsync({
+    const newSnippet = await createSnippet.mutateAsync({
       text: snippetText,
     })
     console.table(newSnippet);
-    router.push('/snippets/${newSnippet.id}');
+    router.push(`/snippets/${newSnippet.id}`);
+  }
+
+  const handleCopy = (copiedText: string) => {
+    if (!copiedText) return;
+    navigator.clipboard.writeText(copiedText)
+  }
+
+  const handleDelete = (snippetId: string) => {
+    deleteSnippet.mutateAsync({ id: snippetId })
   }
 
   return (
@@ -43,7 +59,7 @@ const Home: NextPage = () => {
           Save
         </button>
         <h3
-          className="mt-4 text-2xl font-bold"
+          className="mt-4 mb-3 text-2xl font-bold"
         >
           All Snippets 
         </h3>
@@ -51,12 +67,25 @@ const Home: NextPage = () => {
           className="flex flex-col"
         >
           {allSnippets.data?.map((snippet) => (
-            <textarea
-              key={snippet.id}
-              className="border shadow-md rounded m-3 p-2 w-30 h-20"
-              disabled
-              value={snippet.text}
-            />
+            <div key={snippet.id} className="flex">
+              <textarea
+                className="border shadow-md rounded m-3 p-2 w-30 h-20"
+                disabled
+                value={snippet.text}
+                onClick={()=>router.push(`/snippets/${snippet.id}`)}
+              />
+              <div>
+              <button
+                onClick={() => handleCopy(snippet.text)}
+                className="mt-5 flex"
+              >COPPY!</button>
+              <button
+                onClick={() => router.push(`/snippets/${snippet.id}`)}
+              >View Snippet</button>
+              <button onClick={() => handleDelete(snippet.id)}>Delete</button>
+              </div>
+            </div>
+            
           ))}
         </div>
       </main>
