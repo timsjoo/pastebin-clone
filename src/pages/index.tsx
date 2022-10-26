@@ -16,8 +16,12 @@ const Home: NextPage = () => {
   const createSnippet = trpc.snippet.saveSnippet.useMutation({
     async onMutate(newItem) {
       utils.snippet.getAllSnippets.cancel();
-      const prevData = utils.snippet.getAllSnippets.getData();
-      utils.snippet.getAllSnippets.setData([ ...prevData, newItem ]);
+      const prevData: any = utils.snippet.getAllSnippets.getData();
+
+      if (Array.isArray(prevData)) {
+        utils.snippet.getAllSnippets.setData([ ...prevData, newItem ]);
+      }
+
       return { prevData };
     },
     onError(err, thing, ctx) {
@@ -31,7 +35,7 @@ const Home: NextPage = () => {
   });
 
   const allSnippets = trpc.snippet.getAllSnippets.useQuery();
-  
+
   const deleteSnippet = trpc.snippet.deleteSnippet.
   useMutation({
     async onMutate(deletedItem) {
@@ -46,7 +50,7 @@ const Home: NextPage = () => {
     },
     onError(err, newPost, ctx) {
       // If the mutation fails, use the context-value from onMutate
-      utils.snippet.getAllSnippets.setData(ctx.prevData);
+      utils.snippet.getAllSnippets.setData(ctx?.prevData);
       // some error message
     },
     async onSettled() {
